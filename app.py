@@ -138,6 +138,28 @@ def get_vehicles():
 
     return response.json()
 
+@app.route('/vehicle_options/<vin>')
+def get_vehicle_options(vin):
+    # Check access token
+    access_token = session.get('access_token')
+    if not access_token:
+        return {"error": "Access token not found."}, 401
+
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json',
+    }
+
+    # Get vehicle options
+    options_url = f'{API_BASE_URL}/api/1/dx/vehicles/options'
+    params = {'vin': vin}
+    response = requests.get(options_url, headers=headers, params=params)
+
+    if response.status_code != 200:
+        return {"error": "Error retrieving vehicle options.", "details": response.text}, response.status_code
+
+    return response.json()
+
 @app.route('/logout')
 def logout():
     session.clear()

@@ -23,7 +23,14 @@
     </div>
 </div>
 
+<!-- 차량 옵션 정보를 표시할 영역 -->
+<div class="vehicle-options-section" style="display:none;">
+    <h2>Vehicle Options</h2>
+    <ul id="vehicle-options-list"></ul>
+</div>
+
 <script>
+    // 차량 정보를 가져오는 함수
     document.getElementById('vehicle-info-btn').addEventListener('click', function() {
         fetch('{{ url_for("get_vehicles") }}')
         .then(response => response.json())
@@ -42,7 +49,7 @@
                     <strong>Display Name:</strong> ${vehicle.display_name} <br>
                     <strong>ID:</strong> ${vehicle.id} <br>
                     <strong>vehicle_id:</strong> ${vehicle.vehicle_id} <br>
-                    <strong>VIN:</strong> ${vehicle.vin} <br>
+                    <button class="vin-btn btn" data-vin="${vehicle.vin}">Show Options for VIN: ${vehicle.vin}</button> <br>
                     <strong>State:</strong> ${vehicle.state}
                 `;
                 vehicleList.appendChild(li);
@@ -50,8 +57,51 @@
 
             // Show the vehicle info section
             document.getElementById('vehicle-info').style.display = 'block';
+
+            // Add click event to VIN buttons to load options
+            document.querySelectorAll('.vin-btn').forEach(vinBtn => {
+                vinBtn.addEventListener('click', function() {
+                    const vin = this.dataset.vin;
+                    loadVehicleOptions(vin);
+                });
+            });
         })
         .catch(error => console.error('Error fetching vehicles:', error));
     });
+
+    // 차량 옵션을 가져오는 함수
+    function loadVehicleOptions(vin) {
+        fetch(`/vehicle_options/${vin}`)
+        .then(response => response.json())
+        .then(data => {
+            // 기존에 response.codes로 접근했지만, 실제 데이터에 response가 없는 경우 바로 codes에 접근하도록 수정
+            console.log('[data]', data);
+            const codes = data.response ? data.response.codes : data.codes;
+
+            if (!codes) {
+                alert('No vehicle options available.');
+                return;
+            }
+
+            const optionsList = document.getElementById('vehicle-options-list');
+            optionsList.innerHTML = ''; // Clear existing options
+
+            codes.forEach(option => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <strong>Code:</strong> ${option.code} <br>
+                    <strong>Display Name:</strong> ${option.displayName} <br>
+                    ${option.colorCode ? `<strong>Color Code:</strong> ${option.colorCode} <br>` : ''}
+                    <strong>Active:</strong> ${option.isActive}
+                `;
+                optionsList.appendChild(li);
+            });
+
+            // Show the vehicle options section
+            document.querySelector('.vehicle-options-section').style.display = 'block';
+        })
+        .catch(error => console.error('Error fetching vehicle options:', error));
+    }
+
 </script>
 {% endblock %}
