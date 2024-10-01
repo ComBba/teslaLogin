@@ -13,4 +13,45 @@
     {% endif %}
     <a href="{{ url_for('logout') }}" class="btn">Logout</a>
 </div>
+
+<!-- 차량 정보 버튼 -->
+<div class="vehicle-section">
+    <button id="vehicle-info-btn" class="btn">차량 정보 보기</button>
+    <div id="vehicle-info" style="display:none;">
+        <h2>Vehicle List</h2>
+        <ul id="vehicle-list"></ul>
+    </div>
+</div>
+
+<script>
+    document.getElementById('vehicle-info-btn').addEventListener('click', function() {
+        fetch('{{ url_for("get_vehicles") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            const vehicleList = document.getElementById('vehicle-list');
+            vehicleList.innerHTML = ''; // Clear existing list
+
+            data.response.forEach(vehicle => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <strong>Display Name:</strong> ${vehicle.display_name} <br>
+                    <strong>ID:</strong> ${vehicle.id} <br>
+                    <strong>vehicle_id:</strong> ${vehicle.vehicle_id} <br>
+                    <strong>VIN:</strong> ${vehicle.vin} <br>
+                    <strong>State:</strong> ${vehicle.state}
+                `;
+                vehicleList.appendChild(li);
+            });
+
+            // Show the vehicle info section
+            document.getElementById('vehicle-info').style.display = 'block';
+        })
+        .catch(error => console.error('Error fetching vehicles:', error));
+    });
+</script>
 {% endblock %}

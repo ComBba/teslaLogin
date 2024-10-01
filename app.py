@@ -20,7 +20,7 @@ AUTH_URL = 'https://auth.tesla.com/oauth2/v3/authorize'
 TOKEN_URL = 'https://auth.tesla.com/oauth2/v3/token'
 AUDIENCE = 'https://fleet-api.prd.na.vn.cloud.tesla.com'
 API_BASE_URL = 'https://fleet-api.prd.na.vn.cloud.tesla.com'
-SCOPE = 'user_data'  # Minimum scopes for user info
+SCOPE = 'user_data vehicle_device_data'  # Minimum scopes for user info
 CODE_CHALLENGE_METHOD = 'S256'
 
 # Generate PKCE code verifier and challenge
@@ -114,6 +114,29 @@ def user_info():
 
     user_data = response.json().get('response', {})
     return render_template('user_info.html', user=user_data)
+
+@app.route('/vehicles')
+def get_vehicles():
+    # Check access token
+    access_token = session.get('access_token')
+    if not access_token:
+        return {"error": "Access token not found."}, 401
+
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json',
+    }
+
+    # Get vehicles
+    vehicle_url = f'{API_BASE_URL}/api/1/vehicles'
+    response = requests.get(vehicle_url, headers=headers)
+
+    print(f'Vehicle response: {response.status_code}, {response.text}')
+
+    if response.status_code != 200:
+        return {"error": "Error retrieving vehicles.", "details": response.text}, response.status_code
+
+    return response.json()
 
 @app.route('/logout')
 def logout():
