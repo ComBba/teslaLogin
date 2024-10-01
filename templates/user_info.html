@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="user-details">
+    <h2>User Information</h2>
+    <ul>
+        <li><strong>Email:</strong> {{ user['email'] }}</li>
+        <li><strong>Full Name:</strong> {{ user['full_name'] }}</li>
+        <li><strong>Vault UUID:</strong> {{ user['vault_uuid'] }}</li>
+    </ul>
+    {% if user['profile_image_url'] %}
+    <img src="{{ user['profile_image_url'] }}" alt="Profile Image">
+    {% endif %}
+    <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+</div>
+{% endblock %}

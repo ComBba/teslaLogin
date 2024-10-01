@@ -1,0 +1,152 @@
+body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.header {
+    background-color: #e82127;
+    color: #fff;
+    padding: 1em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.header nav a {
+    color: #fff;
+    margin-right: 1em;
+    text-decoration: none;
+}
+
+.header nav a:hover {
+    text-decoration: underline;
+}
+
+.main-content {
+    padding: 2em;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.flash-messages {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1em 0;
+    color: #e82127;
+}
+
+.welcome {
+    text-align: center;
+    margin-top: 5em;
+}
+
+.welcome h2 {
+    color: #e82127;
+}
+
+.welcome .btn {
+    display: inline-block;
+    padding: 0.75em 1.5em;
+    background-color: #e82127;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    margin-top: 1em;
+    font-weight: bold;
+}
+
+.welcome .btn:hover {
+    background-color: #b71b21;
+}
+
+.vehicle-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.vehicle-card {
+    background-color: #fff;
+    padding: 1em;
+    margin: 1em 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.vehicle-card h3 {
+    margin: 0;
+    color: #e82127;
+}
+
+.vehicle-card .btn {
+    display: inline-block;
+    padding: 0.5em 1em;
+    background-color: #e82127;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    margin-top: 0.5em;
+    font-weight: bold;
+}
+
+.vehicle-card .btn:hover {
+    background-color: #b71b21;
+}
+
+.vehicle-details {
+    background-color: #fff;
+    padding: 2em;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.vehicle-details h2 {
+    color: #e82127;
+}
+
+.vehicle-details .btn {
+    display: inline-block;
+    padding: 0.5em 1em;
+    background-color: #e82127;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    margin-top: 1em;
+    font-weight: bold;
+}
+
+.vehicle-details .btn:hover {
+    background-color: #b71b21;
+}
+
+.footer {
+    text-align: center;
+    padding: 1em;
+    background-color: #333;
+    color: #fff;
+    margin-top: 2em;
+}
+
+.options-list {
+    list-style: none;
+    padding: 0;
+}
+
+.option-item {
+    background-color: #fff;
+    padding: 1em;
+    margin: 0.5em 0;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.option-item p {
+    margin: 0.5em 0;
+}
