@@ -3,6 +3,9 @@ import base64
 import hashlib
 import requests
 import urllib.parse
+import cv2
+from PIL import Image
+from collections import Counter
 from flask import Flask, session, redirect, url_for, request, render_template, flash, jsonify, send_from_directory
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -26,7 +29,7 @@ CODE_CHALLENGE_METHOD = 'S256'
 
 # Cache settings
 CACHE_DIR = 'cache'
-CACHE_DURATION = timedelta(hours=24)
+CACHE_DURATION = timedelta(hours=720)
 
 # Create cache directory if not exists
 if not os.path.exists(CACHE_DIR):
@@ -204,15 +207,19 @@ def cache_images(image_urls, vin, model_letter, option_codes):
     view_index = 0  # 뷰 각도마다 고유한 파일명을 생성하기 위한 인덱스
     
     for url in image_urls:
+        view_index += 1  # 다음 뷰 각도를 처리하기 위한 인덱스 증가
         # 파일명 생성: 뷰를 구분하여 각 뷰의 이미지를 고유하게 저장
         view_angle = url.split('&view=')[1].split('&')[0]  # URL에서 view 각도 추출
-        file_name = f"{vin}_{model_letter}_{'_'.join(option_codes)}_{view_angle}.jpg".replace('/', '_')
+        file_name = f"{view_index}-{vin}_{model_letter}_{'_'.join(option_codes)}_{view_angle}.jpg".replace('/', '_')
         file_path = os.path.join(CACHE_DIR, file_name)
         
         # 파일이 이미 캐시되어 있고 24시간 내 생성되었다면 기존 파일을 사용
         if os.path.exists(file_path):
             file_mod_time = datetime.fromtimestamp(os.path.getmtime(file_path))
             if datetime.now() - file_mod_time < CACHE_DURATION:
+                if view_index == 1:
+                    cartoon_file_name = f"6-{vin}_{model_letter}_cartoon.png"
+                    cached_image_paths.append(f"/cached_image/{cartoon_file_name}")
                 cached_image_paths.append(f"/cached_image/{file_name}")
                 continue
             else:
@@ -224,11 +231,68 @@ def cache_images(image_urls, vin, model_letter, option_codes):
         if response.status_code == 200:
             with open(file_path, 'wb') as file:
                 file.write(response.content)
+
+            if view_index == 1:
+                cartoon_file_name = f"6-{vin}_{model_letter}_cartoon.png"
+                create_cartoon_image(file_path, cartoon_file_name)
+                cached_image_paths.append(f"/cached_image/{cartoon_file_name}")
+
             cached_image_paths.append(f"/cached_image/{file_name}")
 
-        view_index += 1  # 다음 뷰 각도를 처리하기 위한 인덱스 증가
 
     return cached_image_paths
+
+def create_cartoon_image(input_image_path, output_image_name):
+    img = cv2.imread(input_image_path)
+
+    # Convert image to RGB
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # Apply bilateral filter
+    for _ in range(7):
+        img_rgb = cv2.bilateralFilter(img_rgb, d=9, sigmaColor=75, sigmaSpace=75)
+
+    # Edge detection
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_blur = cv2.medianBlur(img_gray, 7)
+    edges = cv2.adaptiveThreshold(img_blur, 255, 
+                                  cv2.ADAPTIVE_THRESH_MEAN_C, 
+                                  cv2.THRESH_BINARY, 
+                                  blockSize=9, C=2)
+
+    # Combine color and edges
+    edges_colored = cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB)
+    cartoon = cv2.bitwise_and(img_rgb, edges_colored)
+
+    # Reduce color depth
+    img_pil = Image.fromarray(cartoon)
+    img_pil = img_pil.convert('P', palette=Image.ADAPTIVE, colors=256)
+
+    # Convert to RGBA to add transparency
+    img_pil = img_pil.convert('RGBA')
+
+    # Get the data of the image
+    datas = list(img_pil.getdata())
+
+    # Get the most common color in the first 1-1000 pixels
+    common_color = Counter(datas[:min(1000, len(datas))]).most_common(1)[0][0]
+
+    # Replace the most common color with transparent
+    new_data = []
+    for item in datas:
+        # Check if the item matches the most common color
+        if item[:3] == common_color[:3]:  # Compare only RGB channels
+            # Change to transparent
+            new_data.append((255, 255, 255, 0))
+        else:
+            new_data.append(item)
+
+    # Update image data
+    img_pil.putdata(new_data)
+
+    # Save the cartoon effect image as PNG to support transparency
+    output_image_name = os.path.splitext(output_image_name)[0] + ".png"
+    img_pil.save(os.path.join(CACHE_DIR, output_image_name))
 
 @app.route('/cached_image/<filename>')
 def serve_cached_image(filename):
