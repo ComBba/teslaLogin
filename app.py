@@ -193,7 +193,7 @@ def generate_tesla_images(model_letter, option_codes):
 
     # 이미지 URL 생성 (각각의 뷰 앵글에 대해 생성)
     image_urls = [
-        f"{base_url}?&context=design_studio_2&options={','.join(option_codes)}&view={view}&model=m{model_letter}&size=1200&bkba_opt={bkba_opt}&crop=0,0,0,0&"
+        f"{base_url}?&context=design_studio_2&options={','.join(option_codes)}&view={view}&model=m{model_letter}&size=1920&bkba_opt={bkba_opt}&crop=0,0,0,0&"
         for view in view_angles
     ]
 
