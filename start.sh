@@ -20,4 +20,4 @@ fi
 pip install -r requirements.txt
 
 # Flask 애플리케이션 실행
-flask run --host=0.0.0.0 --port=3000
+flask run --host=0.0.0.0 --port=3003

@@ -3,8 +3,9 @@ import base64
 import hashlib
 import requests
 import urllib.parse
-from flask import Flask, session, redirect, url_for, request, render_template, flash, jsonify
+from flask import Flask, session, redirect, url_for, request, render_template, flash, jsonify, send_from_directory
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv('.env.local')
@@ -22,6 +23,14 @@ AUDIENCE = 'https://fleet-api.prd.na.vn.cloud.tesla.com'
 API_BASE_URL = 'https://fleet-api.prd.na.vn.cloud.tesla.com'
 SCOPE = 'user_data vehicle_device_data'  # Minimum scopes for user info
 CODE_CHALLENGE_METHOD = 'S256'
+
+# Cache settings
+CACHE_DIR = 'cache'
+CACHE_DURATION = timedelta(hours=24)
+
+# Create cache directory if not exists
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR)
 
 # Generate PKCE code verifier and challenge
 def generate_code_verifier_and_challenge():
@@ -131,8 +140,6 @@ def get_vehicles():
     vehicle_url = f'{API_BASE_URL}/api/1/vehicles'
     response = requests.get(vehicle_url, headers=headers)
 
-    print(f'Vehicle response: {response.status_code}, {response.text}')
-
     if response.status_code != 200:
         return {"error": "Error retrieving vehicles.", "details": response.text}, response.status_code
 
@@ -165,29 +172,68 @@ def get_vehicle_options(vin):
 def generate_vehicle_image(vin, model_letter, option_codes):
     # 옵션 코드 문자열을 리스트로 변환
     option_codes_list = option_codes.split(',')
-    
+
     # Tesla 이미지 URL 생성
     image_urls = generate_tesla_images(model_letter, option_codes_list)
     
-    return jsonify({'urls': image_urls})
+    # 이미지 다운로드 및 캐싱
+    cached_images = cache_images(image_urls, vin, model_letter, option_codes_list)
+    
+    return jsonify({'urls': cached_images})
 
 def generate_tesla_images(model_letter, option_codes):
     # Tesla 이미지 베이스 URL
     base_url = "https://static-assets.tesla.com/configurator/compositor"
 
     # 이미지 각도 옵션 설정
-    view_angles = [ 'STUD_3QTR', 'STUD_SIDE', 'STUD_3QTR_V2', 'STUD_SEAT_V2']
+    view_angles = [ 'STUD_FRONT34', 'STUD_SIDEVIEW', 'STUD_REAR34', 'STUD_RIMCLOSEUP', 'STUD_INTERIOR']
 
     # 배경 설정 (0: 흰색 배경, 1: 투명 배경)
     bkba_opt = 1
 
     # 이미지 URL 생성 (각각의 뷰 앵글에 대해 생성)
     image_urls = [
-        f"{base_url}?&options={','.join(option_codes)}&view={view}&model=m{model_letter}&size=1441&bkba_opt={bkba_opt}&version=v0027d202003051352"
+        f"{base_url}?&context=design_studio_2&options={','.join(option_codes)}&view={view}&model=m{model_letter}&size=1200&bkba_opt={bkba_opt}&crop=0,0,0,0&"
         for view in view_angles
     ]
 
     return image_urls
+
+def cache_images(image_urls, vin, model_letter, option_codes):
+    cached_image_paths = []
+    view_index = 0  # 뷰 각도마다 고유한 파일명을 생성하기 위한 인덱스
+    
+    for url in image_urls:
+        # 파일명 생성: 뷰를 구분하여 각 뷰의 이미지를 고유하게 저장
+        view_angle = url.split('&view=')[1].split('&')[0]  # URL에서 view 각도 추출
+        file_name = f"{vin}_{model_letter}_{'_'.join(option_codes)}_{view_angle}.jpg".replace('/', '_')
+        file_path = os.path.join(CACHE_DIR, file_name)
+        
+        # 파일이 이미 캐시되어 있고 24시간 내 생성되었다면 기존 파일을 사용
+        if os.path.exists(file_path):
+            file_mod_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+            if datetime.now() - file_mod_time < CACHE_DURATION:
+                cached_image_paths.append(f"/cached_image/{file_name}")
+                continue
+            else:
+                # 캐시 시간이 초과되면 파일을 삭제
+                os.remove(file_path)
+
+        # 새로운 파일 다운로드
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(file_path, 'wb') as file:
+                file.write(response.content)
+            cached_image_paths.append(f"/cached_image/{file_name}")
+
+        view_index += 1  # 다음 뷰 각도를 처리하기 위한 인덱스 증가
+
+    return cached_image_paths
+
+@app.route('/cached_image/<filename>')
+def serve_cached_image(filename):
+    # 캐시 디렉터리에서 이미지 파일 반환
+    return send_from_directory(CACHE_DIR, filename)
 
 @app.route('/logout')
 def logout():

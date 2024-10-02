@@ -1,3 +1,4 @@
+<!-- located at /templates/user_info.html -->
 {% extends 'base.html' %}
 
 {% block content %}
@@ -53,10 +54,10 @@
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <strong>Display Name:</strong> ${vehicle.display_name} <br>
+                    <strong>State:</strong> ${vehicle.state} <br>
                     <strong>ID:</strong> ${vehicle.id} <br>
                     <strong>vehicle_id:</strong> ${vehicle.vehicle_id} <br>
                     <button class="vin-btn btn" data-vin="${vehicle.vin}" data-model="${vehicle.vin[3]}">Show Options for VIN: ${vehicle.vin}</button> <br>
-                    <strong>State:</strong> ${vehicle.state}
                 `;
                 vehicleList.appendChild(li);
             });
