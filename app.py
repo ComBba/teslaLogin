@@ -3,7 +3,7 @@ import base64
 import hashlib
 import requests
 import urllib.parse
-from flask import Flask, session, redirect, url_for, request, render_template, flash
+from flask import Flask, session, redirect, url_for, request, render_template, flash, jsonify
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -159,6 +159,35 @@ def get_vehicle_options(vin):
         return {"error": "Error retrieving vehicle options.", "details": response.text}, response.status_code
 
     return response.json()
+
+# 차량 이미지를 생성하는 엔드포인트
+@app.route('/generate_image/<vin>/<model_letter>/<option_codes>')
+def generate_vehicle_image(vin, model_letter, option_codes):
+    # 옵션 코드 문자열을 리스트로 변환
+    option_codes_list = option_codes.split(',')
+    
+    # Tesla 이미지 URL 생성
+    image_urls = generate_tesla_images(model_letter, option_codes_list)
+    
+    return jsonify({'urls': image_urls})
+
+def generate_tesla_images(model_letter, option_codes):
+    # Tesla 이미지 베이스 URL
+    base_url = "https://static-assets.tesla.com/configurator/compositor"
+
+    # 이미지 각도 옵션 설정
+    view_angles = [ 'STUD_3QTR', 'STUD_SIDE', 'STUD_3QTR_V2', 'STUD_SEAT_V2']
+
+    # 배경 설정 (0: 흰색 배경, 1: 투명 배경)
+    bkba_opt = 1
+
+    # 이미지 URL 생성 (각각의 뷰 앵글에 대해 생성)
+    image_urls = [
+        f"{base_url}?&options={','.join(option_codes)}&view={view}&model=m{model_letter}&size=1441&bkba_opt={bkba_opt}&version=v0027d202003051352"
+        for view in view_angles
+    ]
+
+    return image_urls
 
 @app.route('/logout')
 def logout():
