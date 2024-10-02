@@ -135,11 +135,19 @@
             const imageContainer = document.getElementById('vehicle-image-container');
             imageContainer.innerHTML = ''; // Clear existing images
 
-            data.urls.forEach(imageUrl => {
+            data.urls.forEach((imageUrl, index) => {
                 const img = document.createElement('img');
                 img.src = imageUrl;
                 img.alt = 'Vehicle Image';
                 img.style.maxWidth = '100%';
+
+                // 이미지 1, 2, 3번을 크롭 처리
+                if (index < 3) {
+                    img.style.transform = 'scale(1.5)';
+                    img.style.objectFit = 'cover';
+                    img.style.overflow = 'hidden';
+                }
+
                 imageContainer.appendChild(img);
             });
 
