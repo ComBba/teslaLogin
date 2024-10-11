@@ -5,6 +5,8 @@ import hashlib
 import requests
 import urllib.parse
 import cv2
+import random
+import numpy as np
 from PIL import Image
 from collections import Counter
 from flask import Flask, session, redirect, url_for, request, render_template, flash, jsonify, send_from_directory
@@ -244,56 +246,60 @@ def cache_images(image_urls, vin, model_letter, option_codes):
     return cached_image_paths
 
 def create_cartoon_image(input_image_path, output_image_name):
-    img = cv2.imread(input_image_path)
+    # Set canvas size for NFT (e.g., 1024x1024 pixels)
+    canvas_width, canvas_height = 1024, 1024
 
-    # Convert image to RGB
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # Load background image and resize to fit canvas while maintaining aspect ratio
+    background_path = 'images/background_1.png'
+    background = Image.open(background_path).convert('RGBA')
+    bg_w, bg_h = background.size
+    bg_scale = max(canvas_width / bg_w, canvas_height / bg_h)
+    new_bg_size = (int(bg_w * bg_scale), int(bg_h * bg_scale))
+    background_resized = background.resize(new_bg_size, Image.LANCZOS)
 
-    # Apply bilateral filter
-    for _ in range(7):
-        img_rgb = cv2.bilateralFilter(img_rgb, d=9, sigmaColor=75, sigmaSpace=75)
+    # Crop background to fit the canvas size
+    start_x = (background_resized.width - canvas_width) // 2
+    start_y = (background_resized.height - canvas_height) // 2
+    background_cropped = background_resized.crop((start_x, start_y, start_x + canvas_width, start_y + canvas_height))
 
-    # Edge detection
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_blur = cv2.medianBlur(img_gray, 7)
-    edges = cv2.adaptiveThreshold(img_blur, 255, 
-                                  cv2.ADAPTIVE_THRESH_MEAN_C, 
-                                  cv2.THRESH_BINARY, 
-                                  blockSize=9, C=2)
+    # Load input image and resize it to 95% of its original size
+    img = Image.open(input_image_path).convert('RGBA')
+    img_w, img_h = img.size
+    img_resized = img.resize((int(img_w * 0.95), int(img_h * 0.95)), Image.LANCZOS)
 
-    # Combine color and edges
-    edges_colored = cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB)
-    cartoon = cv2.bitwise_and(img_rgb, edges_colored)
+    # Calculate position to place the input image at the bottom of the canvas
+    x_offset = (canvas_width - img_resized.width) // 2
+    y_offset = canvas_height - img_resized.height
 
-    # Reduce color depth
-    img_pil = Image.fromarray(cartoon)
-    img_pil = img_pil.convert('P', palette=Image.ADAPTIVE, colors=256)
+    # Paste input image onto background with cropping if necessary
+    background_cropped.paste(img_resized, (x_offset, y_offset), img_resized)
 
-    # Convert to RGBA to add transparency
-    img_pil = img_pil.convert('RGBA')
+    # Load star images and resize to 10% of canvas width while maintaining aspect ratio
+    star_paths = ['images/random_1.png', 'images/random_2.png']
+    stars = [Image.open(path).convert('RGBA') for path in star_paths]
+    star_resized_list = []
+    for star in stars:
+        star_w, star_h = star.size
+        star_scale = (0.1 * canvas_width) / star_w
+        new_star_size = (int(star_w * star_scale), int(star_h * star_scale))
+        star_resized_list.append(star.resize(new_star_size, Image.LANCZOS))
 
-    # Get the data of the image
-    datas = list(img_pil.getdata())
+    # Add random star decorations
+    num_stars = random.randint(7, 20)
+    for _ in range(num_stars):
+        # Randomly select a star image
+        star_resized = random.choice(star_resized_list)
+        
+        # Random position for each star
+        x_pos = random.randint(0, canvas_width - star_resized.width)
+        y_pos = random.randint(0, canvas_height - star_resized.height)
 
-    # Get the most common color in the first 1-1000 pixels
-    common_color = Counter(datas[:min(1000, len(datas))]).most_common(1)[0][0]
+        # Paste star onto background, maintaining transparency
+        background_cropped.paste(star_resized, (x_pos, y_pos), star_resized)
 
-    # Replace the most common color with transparent
-    new_data = []
-    for item in datas:
-        # Check if the item matches the most common color
-        if item[:3] == common_color[:3]:  # Compare only RGB channels
-            # Change to transparent
-            new_data.append((255, 255, 255, 0))
-        else:
-            new_data.append(item)
-
-    # Update image data
-    img_pil.putdata(new_data)
-
-    # Save the cartoon effect image as PNG to support transparency
+    # Save the final image as PNG to support transparency
     output_image_name = os.path.splitext(output_image_name)[0] + ".png"
-    img_pil.save(os.path.join(CACHE_DIR, output_image_name))
+    background_cropped.save(os.path.join('cache', output_image_name), format='PNG')
 
 @app.route('/cached_image/<filename>')
 def serve_cached_image(filename):
